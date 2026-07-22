@@ -318,9 +318,7 @@ fun PaymentScreen(
             // Submit Button
             Button(
                 onClick = {
-                    if (!isConnected) {
-                        showErrorMsg = "Une connexion Internet active est requise pour soumettre votre réservation et la synchroniser."
-                    } else if (senderPhone.isBlank()) {
+                    if (senderPhone.isBlank()) {
                         showErrorMsg = "Veuillez saisir votre numéro de téléphone émetteur."
                     } else if (transactionId.isBlank()) {
                         showErrorMsg = "Veuillez entrer la référence de transaction mobile money reçue."

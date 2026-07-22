@@ -48,7 +48,7 @@ enum class NavigationFlow {
 }
 
 enum class TravelerScreen {
-    SEARCH, PAYMENT, HISTORY, MESSAGING, PROFILE
+    SEARCH, RESERVATION, PAYMENT, HISTORY, MESSAGING, PROFILE
 }
 
 enum class AgentScreen {
@@ -393,63 +393,68 @@ fun MainAppEntry(viewModel: VoyageViewModel) {
             if (currentUser != null) {
                 NavigationBar {
                     if (currentUser!!.isAgent) {
-                        // Agent Specific Bottom Tabs (No labels/titles shown, only icons for Super Admin)
+                        // Agent Specific Bottom Tabs with clear labels for Super Admin ERP
                         NavigationBarItem(
                             selected = agentScreen == AgentScreen.DASHBOARD,
                             onClick = { agentScreen = AgentScreen.DASHBOARD },
-                            icon = { Icon(Icons.Default.Dashboard, contentDescription = "Indicateurs") }
+                            icon = { Icon(Icons.Default.Dashboard, contentDescription = null) },
+                            label = { Text("ERP Admin", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
                         )
                         NavigationBarItem(
                             selected = agentScreen == AgentScreen.VALIDATION,
                             onClick = { agentScreen = AgentScreen.VALIDATION },
-                            icon = { Icon(Icons.Default.PendingActions, contentDescription = "Paiements") }
+                            icon = { Icon(Icons.Default.PendingActions, contentDescription = null) },
+                            label = { Text("Paiements", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
                         )
                         NavigationBarItem(
                             selected = agentScreen == AgentScreen.TRIPS,
                             onClick = { agentScreen = AgentScreen.TRIPS },
-                            icon = { Icon(Icons.Default.Settings, contentDescription = "Trajets") }
+                            icon = { Icon(Icons.Default.AltRoute, contentDescription = null) },
+                            label = { Text("Trajets", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
                         )
                         NavigationBarItem(
                             selected = agentScreen == AgentScreen.MESSAGING,
                             onClick = { agentScreen = AgentScreen.MESSAGING },
-                            icon = { Icon(Icons.Default.Forum, contentDescription = "Messagerie") }
+                            icon = { Icon(Icons.Default.Forum, contentDescription = null) },
+                            label = { Text("Messagerie", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
                         )
                         NavigationBarItem(
                             selected = agentScreen == AgentScreen.PROFILE,
                             onClick = { agentScreen = AgentScreen.PROFILE },
-                            icon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = "Droits & Users") }
+                            icon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null) },
+                            label = { Text("Compte", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
                         )
                     } else {
                         // Traveler Specific Bottom Tabs
                         NavigationBarItem(
                             selected = travelerScreen == TravelerScreen.SEARCH,
                             onClick = { travelerScreen = TravelerScreen.SEARCH },
-                            icon = { Icon(Icons.Default.Search, contentDescription = null) },
-                            label = { Text("Recherche", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                            icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                            label = { Text("Accueil", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
                         )
                         NavigationBarItem(
-                            selected = travelerScreen == TravelerScreen.PAYMENT,
-                            onClick = { travelerScreen = TravelerScreen.PAYMENT },
-                            icon = { Icon(Icons.Default.Payments, contentDescription = null) },
-                            label = { Text("Paiement", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                            selected = travelerScreen == TravelerScreen.RESERVATION,
+                            onClick = { travelerScreen = TravelerScreen.RESERVATION },
+                            icon = { Icon(Icons.Default.ConfirmationNumber, contentDescription = null) },
+                            label = { Text("Réservation", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
                         )
                         NavigationBarItem(
                             selected = travelerScreen == TravelerScreen.HISTORY,
                             onClick = { travelerScreen = TravelerScreen.HISTORY },
-                            icon = { Icon(Icons.Default.ConfirmationNumber, contentDescription = null) },
-                            label = { Text("Billets", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                            icon = { Icon(Icons.Default.Receipt, contentDescription = null) },
+                            label = { Text("Mes Billets", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
                         )
                         NavigationBarItem(
                             selected = travelerScreen == TravelerScreen.MESSAGING,
                             onClick = { travelerScreen = TravelerScreen.MESSAGING },
                             icon = { Icon(Icons.Default.Forum, contentDescription = null) },
-                            label = { Text("Messagerie", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                            label = { Text("Messagerie", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
                         )
                         NavigationBarItem(
                             selected = travelerScreen == TravelerScreen.PROFILE,
                             onClick = { travelerScreen = TravelerScreen.PROFILE },
                             icon = { Icon(Icons.Default.AccountCircle, contentDescription = null) },
-                            label = { Text("Profil", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                            label = { Text("Profil", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
                         )
                     }
                 }
@@ -503,7 +508,12 @@ fun MainAppEntry(viewModel: VoyageViewModel) {
                             when (travelerScreen) {
                                 TravelerScreen.SEARCH -> SearchScreen(
                                     viewModel = viewModel,
-                                    onNavigateToPayment = { travelerScreen = TravelerScreen.PAYMENT }
+                                    onNavigateToPayment = { travelerScreen = TravelerScreen.RESERVATION }
+                                )
+
+                                TravelerScreen.RESERVATION -> ReservationScreen(
+                                    viewModel = viewModel,
+                                    onNavigateToHistory = { travelerScreen = TravelerScreen.HISTORY }
                                 )
 
                                 TravelerScreen.PAYMENT -> PaymentScreen(

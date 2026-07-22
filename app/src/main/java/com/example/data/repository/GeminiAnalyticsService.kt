@@ -26,7 +26,7 @@ object GeminiAnalyticsService {
         }
 
         try {
-            val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$apiKey"
+            val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
             
             // Build Request JSON using standard Android JSONObject
             val partObj = JSONObject().put("text", prompt)

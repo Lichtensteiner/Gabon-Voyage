@@ -10,7 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-@Database(entities = [User::class, Agency::class, Trip::class, Booking::class], version = 1, exportSchema = false)
+@Database(entities = [User::class, Agency::class, Trip::class, Booking::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract val userDao: UserDao
     abstract val agencyDao: AgencyDao
@@ -28,6 +28,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "gabon_voyage_database"
                 )
+                    .fallbackToDestructiveMigration()
                     .addCallback(DatabaseCallback(scope))
                     .build()
                 INSTANCE = instance

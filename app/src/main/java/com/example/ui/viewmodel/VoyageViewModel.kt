@@ -49,6 +49,63 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
     // --- State: Chat Messages ---
     private val _chatMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages.asStateFlow()
+
+    // --- State: Super Admin ERP Flotte & Véhicules ---
+    private val _vehicles = MutableStateFlow<List<Vehicle>>(
+        listOf(
+            Vehicle(1, "GA-882-GV", "Toyota", "Coaster VIP", "VIP", 22, listOf("Climatisation", "Wifi HighSpeed", "Prise USB", "Écran TV", "Siège Cuir"), "Excellent", "15/12/2026", "20/10/2026", true, "Jean-Paul Mba"),
+            Vehicle(2, "GA-304-GV", "Mercedes", "Sprinter 18", "Standard", 18, listOf("Climatisation", "Prise USB", "Wifi"), "Bon état", "08/11/2026", "12/09/2026", true, "Marc Ndong"),
+            Vehicle(3, "GA-512-GV", "Isuzu", "Bus Grand Nord 30", "Bus 30 Places", 30, listOf("Climatisation", "Soute Spacieuse", "Toilette"), "Excellent", "30/01/2027", "18/11/2026", true, "Alain Ondo"),
+            Vehicle(4, "GA-109-GV", "Toyota", "HiAce Express", "Mini Bus", 14, listOf("Climatisation"), "En révision", "10/08/2026", "05/06/2026", false, "Serge Obame")
+        )
+    )
+    val vehicles: StateFlow<List<Vehicle>> = _vehicles.asStateFlow()
+
+    // --- State: Super Admin ERP Chauffeurs ---
+    private val _drivers = MutableStateFlow<List<Driver>>(
+        listOf(
+            Driver(1, "Mba", "Jean-Paul", "077 12 34 56", "jp.mba@gabonvoyage.ga", "PERMIS-GA-89120", "15/06/2028", 8, "En Trajet", "GA-882-GV"),
+            Driver(2, "Ndong", "Marc", "066 98 76 54", "m.ndong@gabonvoyage.ga", "PERMIS-GA-44129", "20/09/2027", 5, "Disponible", "GA-304-GV"),
+            Driver(3, "Ondo", "Alain", "074 55 44 33", "a.ondo@gabonvoyage.ga", "PERMIS-GA-11029", "10/12/2029", 12, "Disponible", "GA-512-GV"),
+            Driver(4, "Obame", "Serge", "062 11 22 33", "s.obame@gabonvoyage.ga", "PERMIS-GA-77112", "05/04/2026", 3, "En Repos", "GA-109-GV")
+        )
+    )
+    val drivers: StateFlow<List<Driver>> = _drivers.asStateFlow()
+
+    // --- State: Super Admin ERP Colis & Bagages ---
+    private val _parcels = MutableStateFlow<List<Parcel>>(
+        listOf(
+            Parcel("COL-8801", "Emmanuel Mve", "077123456", "Sandrine Ntsame", "066889900", "Libreville ➔ Oyem", 12.5, 8000.0, "TRACK-GV-901", "En transit"),
+            Parcel("COL-8802", "Brice Ondo", "074223344", "Patrice Ekomie", "077445566", "Libreville ➔ Bitam", 8.0, 5000.0, "TRACK-GV-902", "En attente"),
+            Parcel("COL-8803", "Chantal Biyoghe", "066112233", "Pauline Mengue", "062998877", "Oyem ➔ Libreville", 25.0, 15000.0, "TRACK-GV-903", "Livré")
+        )
+    )
+    val parcels: StateFlow<List<Parcel>> = _parcels.asStateFlow()
+
+    // --- State: Super Admin ERP Employés & RBAC ---
+    private val _employees = MutableStateFlow<List<Employee>>(
+        listOf(
+            Employee(1, "Ludovic Lichtensteiner", "lichtensteinerleroitelet@gmail.com", "Super Admin", "Direction Générale", true),
+            Employee(2, "Thierry Mba", "t.mba@gabonvoyage.ga", "Directeur d'Agence", "Agence Centrale Libreville", true),
+            Employee(3, "Clarisse Nguema", "c.nguema@gabonvoyage.ga", "Comptable", "Direction Financière", true),
+            Employee(4, "Felix Zue", "f.zue@gabonvoyage.ga", "Agent de réservation", "Guichet Agence Oyem", true)
+        )
+    )
+    val employees: StateFlow<List<Employee>> = _employees.asStateFlow()
+
+    // --- State: Super Admin ERP Telemetry GPS ---
+    private val _telemetries = MutableStateFlow<List<VehicleTelemetry>>(
+        listOf(
+            VehicleTelemetry("GA-882-GV", "Libreville ➔ Oyem (Express VIP)", "Pk 185 (Proche Ndjolé)", 88, "13:30", "En Route (À l'Heure)"),
+            VehicleTelemetry("GA-304-GV", "Libreville ➔ Bitam", "Pk 90 (Kango)", 82, "15:45", "En Route (À l'Heure)"),
+            VehicleTelemetry("GA-512-GV", "Oyem ➔ Libreville", "Mitzic Station", 0, "16:00", "Arrêt Station (Escale)")
+        )
+    )
+    val telemetries: StateFlow<List<VehicleTelemetry>> = _telemetries.asStateFlow()
+
+    // --- State: Promo Codes ---
+    private val _promoCodes = MutableStateFlow<List<String>>(listOf("GABON2026", "VIP10", "WELCOME1000"))
+    val promoCodes: StateFlow<List<String>> = _promoCodes.asStateFlow()
     
     init {
         val db = AppDatabase.getInstance(application, viewModelScope)
@@ -111,18 +168,18 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
         try {
             val connListener = object : com.google.firebase.database.ValueEventListener {
                 override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
-                    val connected = snapshot.getValue(Boolean::class.java) ?: false
+                    val connected = snapshot.getValue(Boolean::class.java) ?: true
                     _isConnected.value = connected
                 }
                 override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
-                    _isConnected.value = false
+                    _isConnected.value = true
                 }
             }
             com.google.firebase.database.FirebaseDatabase.getInstance().getReference(".info/connected")
                 .addValueEventListener(connListener)
             connectionStatusListener = connListener
         } catch (e: Exception) {
-            _isConnected.value = false
+            _isConnected.value = true
         }
     }
 
@@ -315,10 +372,6 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
     fun register(nom: String, prenom: String, email: String, phone: String, password: String, isAgent: Boolean = false) {
         viewModelScope.launch {
             _authError.value = null
-            if (!_isConnected.value) {
-                _authError.value = "Une connexion Internet active est requise pour s'enregistrer et synchroniser votre compte."
-                return@launch
-            }
             if (nom.isBlank() || prenom.isBlank() || email.isBlank() || phone.isBlank() || password.isBlank()) {
                 _authError.value = "Veuillez remplir tous les champs requis."
                 return@launch
@@ -368,6 +421,11 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
         _bookingSuccess.value = null
     }
 
+    fun clearSelectedTripForBooking() {
+        _selectedTripForBooking.value = null
+        _bookingSuccess.value = null
+    }
+
     // --- Booking Actions ---
     fun submitBooking(
         paymentMethod: String,
@@ -381,13 +439,10 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
         val travelDate = _travelDateQuery.value
 
         viewModelScope.launch {
-            if (!_isConnected.value) {
-                addNotification("Échec : Vous devez être connecté à Internet pour effectuer une réservation et la synchroniser.")
-                return@launch
-            }
             val booking = Booking(
                 userId = user.id,
                 userNom = "${user.prenom} ${user.nom}",
+                userPrenom = user.prenom,
                 userPhone = senderPhone.ifBlank { user.phone },
                 tripId = trip.id,
                 agencyName = trip.agencyName,
@@ -396,6 +451,7 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
                 departureTime = trip.departureTime,
                 type = trip.type,
                 travelDate = travelDate,
+                unitPrice = trip.price,
                 pricePaid = trip.price,
                 paymentMethod = paymentMethod,
                 merchantNumber = merchantNumber,
@@ -408,7 +464,84 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
             if (bookingId > 0) {
                 val finalBooking = booking.copy(id = bookingId.toInt())
                 _bookingSuccess.value = finalBooking
-                addNotification("Réservation #${bookingId} soumise ! En attente de validation manuelles par un agent (cible 30m-2h).")
+                addNotification("Réservation #${bookingId} soumise ! En attente de validation manuelle par un agent (cible 30m-2h).")
+            }
+        }
+    }
+
+    fun submitFullBooking(
+        userNom: String,
+        userPrenom: String,
+        userSex: String,
+        userPhone: String,
+        userEmail: String,
+        userBirthDate: String,
+        idDocumentType: String,
+        idDocumentNumber: String,
+        trip: Trip,
+        seatsCount: Int,
+        selectedSeats: List<String>,
+        paymentMethod: String,
+        merchantNumber: String,
+        transactionNumber: String
+    ) {
+        val user = _currentUser.value ?: return
+        val travelDate = _travelDateQuery.value.ifBlank {
+            val calendar = Calendar.getInstance()
+            calendar.add(Calendar.DAY_OF_YEAR, 1)
+            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(calendar.time)
+        }
+
+        val refNum = (100000..999999).random()
+        val bookingRef = "GV-2026-$refNum"
+        val pin = (100000..999999).random().toString()
+        val tripCode = "TRIP-${trip.departure.take(3).uppercase()}-${trip.destination.take(3).uppercase()}"
+        val total = trip.price * seatsCount
+        val seatsStr = selectedSeats.joinToString(", ")
+
+        viewModelScope.launch {
+            val booking = Booking(
+                userId = user.id,
+                userNom = userNom,
+                userPrenom = userPrenom,
+                userSex = userSex,
+                userPhone = userPhone,
+                userEmail = userEmail,
+                userBirthDate = userBirthDate,
+                idDocumentType = idDocumentType,
+                idDocumentNumber = idDocumentNumber,
+                tripId = trip.id,
+                tripCode = tripCode,
+                bookingReference = bookingRef,
+                pinCode = pin,
+                seatsCount = seatsCount,
+                selectedSeats = seatsStr,
+                agencyName = trip.agencyName,
+                departure = trip.departure,
+                destination = trip.destination,
+                departureTime = trip.departureTime,
+                type = trip.type,
+                travelDate = travelDate,
+                unitPrice = trip.price,
+                pricePaid = total,
+                paymentMethod = paymentMethod,
+                merchantNumber = merchantNumber,
+                transactionNumber = transactionNumber.ifBlank { "TX-$refNum" },
+                status = "Confirmed"
+            )
+
+            val bookingId = repository.createBooking(booking)
+            if (bookingId > 0) {
+                val finalBooking = booking.copy(id = bookingId.toInt())
+                _bookingSuccess.value = finalBooking
+                
+                // Decrement available seats for the trip
+                val newAvailable = (trip.availableSeats - seatsCount).coerceAtLeast(0)
+                val updatedTrip = trip.copy(availableSeats = newAvailable)
+                repository.updateTrip(updatedTrip)
+
+                // Push notification alert
+                addNotification("🎟️ Réservation Confirmée ! Réf: $bookingRef • Passager: $userPrenom $userNom • $seatsCount place(s) ($seatsStr) • ${total.toInt()} FCFA • PIN: $pin")
             }
         }
     }
@@ -416,10 +549,6 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
     // --- Admin Actions ---
     fun validateBooking(booking: Booking, approved: Boolean, comments: String? = null) {
         viewModelScope.launch {
-            if (!_isConnected.value) {
-                addNotification("Échec de mise à jour : Vous devez être connecté pour valider ou rejeter cette réservation.")
-                return@launch
-            }
             repository.validateBooking(booking, approved, comments)
             
             val clientName = booking.userNom
@@ -433,10 +562,6 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
 
     fun addTripAdmin(agencyId: Int, agencyName: String, departure: String, destination: String, time: String, price: Double, type: String, seats: Int) {
         viewModelScope.launch {
-            if (!_isConnected.value) {
-                addNotification("Échec : Vous devez être connecté pour ajouter des voyages et les synchroniser en temps réel.")
-                return@launch
-            }
             val trip = Trip(
                 agencyId = agencyId,
                 agencyName = agencyName,
@@ -735,6 +860,107 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
             } finally {
                 _aiAnalysisLoading.value = false
             }
+        }
+    }
+
+    // --- ERP Flotte & Véhicules Actions ---
+    fun addVehicle(plate: String, make: String, model: String, category: String, capacity: Int, features: List<String>, driverName: String) {
+        val newId = (_vehicles.value.maxOfOrNull { it.id } ?: 0) + 1
+        val newVehicle = Vehicle(
+            id = newId,
+            plateNumber = plate,
+            make = make,
+            model = model,
+            category = category,
+            capacity = capacity,
+            features = features,
+            condition = "Excellent",
+            isActive = true,
+            driverName = driverName
+        )
+        _vehicles.value = _vehicles.value + newVehicle
+        addNotification("Véhicule $plate ($make $model) ajouté à la flotte.")
+    }
+
+    fun toggleVehicleActive(vehicleId: Int) {
+        _vehicles.value = _vehicles.value.map {
+            if (it.id == vehicleId) it.copy(isActive = !it.isActive) else it
+        }
+    }
+
+    fun deleteVehicle(vehicleId: Int) {
+        _vehicles.value = _vehicles.value.filterNot { it.id == vehicleId }
+        addNotification("Véhicule supprimé de la flotte.")
+    }
+
+    // --- ERP Chauffeurs Actions ---
+    fun addDriver(nom: String, prenom: String, phone: String, email: String, license: String, vehiclePlate: String) {
+        val newId = (_drivers.value.maxOfOrNull { it.id } ?: 0) + 1
+        val newDriver = Driver(
+            id = newId,
+            nom = nom,
+            prenom = prenom,
+            phone = phone,
+            email = email,
+            licenseNumber = license,
+            status = "Disponible",
+            assignedVehiclePlate = vehiclePlate
+        )
+        _drivers.value = _drivers.value + newDriver
+        addNotification("Chauffeur $prenom $nom enregistré dans l'ERP.")
+    }
+
+    fun deleteDriver(driverId: Int) {
+        _drivers.value = _drivers.value.filterNot { it.id == driverId }
+        addNotification("Chauffeur retiré.")
+    }
+
+    // --- ERP Colis & Bagages Actions ---
+    fun addParcel(sender: String, senderPhone: String, recipient: String, recipientPhone: String, route: String, weight: Double, price: Double) {
+        val trackCode = "TRACK-GV-${(100..999).random()}"
+        val idCode = "COL-${(8800..8999).random()}"
+        val parcel = Parcel(
+            id = idCode,
+            senderName = sender,
+            senderPhone = senderPhone,
+            recipientName = recipient,
+            recipientPhone = recipientPhone,
+            route = route,
+            weightKg = weight,
+            priceFcfa = price,
+            trackingCode = trackCode,
+            status = "En transit"
+        )
+        _parcels.value = _parcels.value + parcel
+        addNotification("Colis $trackCode enregistré ($route). Envoi SMS au destinataire $recipientPhone.")
+    }
+
+    fun updateParcelStatus(parcelId: String, newStatus: String) {
+        _parcels.value = _parcels.value.map {
+            if (it.id == parcelId) it.copy(status = newStatus) else it
+        }
+        addNotification("Statut du colis $parcelId mis à jour : $newStatus")
+    }
+
+    // --- ERP Employees Actions ---
+    fun addEmployee(name: String, email: String, role: String, agency: String) {
+        val newId = (_employees.value.maxOfOrNull { it.id } ?: 0) + 1
+        val emp = Employee(newId, name, email, role, agency, true)
+        _employees.value = _employees.value + emp
+        addNotification("Employé $name ($role) ajouté au personnel.")
+    }
+
+    fun toggleEmployeeStatus(id: Int) {
+        _employees.value = _employees.value.map {
+            if (it.id == id) it.copy(active = !it.active) else it
+        }
+    }
+
+    // --- ERP Promo Code Action ---
+    fun addPromoCode(code: String) {
+        if (code.isNotBlank() && !_promoCodes.value.contains(code.uppercase())) {
+            _promoCodes.value = _promoCodes.value + code.uppercase()
+            addNotification("Code promo ${code.uppercase()} activé avec succès.")
         }
     }
 }
