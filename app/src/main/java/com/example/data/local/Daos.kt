@@ -24,6 +24,18 @@ interface UserDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUser(user: User): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUsers(users: List<User>)
+
+    @Query("DELETE FROM users")
+    suspend fun clearAllUsers()
+
+    @Transaction
+    suspend fun syncUsers(users: List<User>) {
+        clearAllUsers()
+        insertUsers(users)
+    }
+
     @Query("DELETE FROM users WHERE id = :id")
     suspend fun deleteUserById(id: Int)
 }
@@ -41,6 +53,15 @@ interface AgencyDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAgency(agency: Agency): Long
+
+    @Query("DELETE FROM agencies")
+    suspend fun clearAllAgencies()
+
+    @Transaction
+    suspend fun syncAgencies(agencies: List<Agency>) {
+        clearAllAgencies()
+        insertAgencies(agencies)
+    }
 }
 
 @Dao
@@ -66,6 +87,15 @@ interface TripDao {
     @Update
     suspend fun updateTrip(trip: Trip)
 
+    @Query("DELETE FROM trips")
+    suspend fun clearAllTrips()
+
+    @Transaction
+    suspend fun syncTrips(trips: List<Trip>) {
+        clearAllTrips()
+        insertTrips(trips)
+    }
+
     @Query("DELETE FROM trips WHERE id = :id")
     suspend fun deleteTripById(id: Int)
 }
@@ -87,6 +117,18 @@ interface BookingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBooking(booking: Booking): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBookings(bookings: List<Booking>)
+
     @Update
     suspend fun updateBooking(booking: Booking)
+
+    @Query("DELETE FROM bookings")
+    suspend fun clearAllBookings()
+
+    @Transaction
+    suspend fun syncBookings(bookings: List<Booking>) {
+        clearAllBookings()
+        insertBookings(bookings)
+    }
 }

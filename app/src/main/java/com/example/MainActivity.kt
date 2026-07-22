@@ -62,6 +62,7 @@ fun MainAppEntry(viewModel: VoyageViewModel) {
     val notifications by viewModel.notifications.collectAsState()
     val isConnected by viewModel.isConnected.collectAsState()
     val isDarkMode by viewModel.isDarkMode.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
 
     var activeFlow by remember { mutableStateOf(NavigationFlow.WELCOME) }
     var travelerScreen by remember { mutableStateOf(TravelerScreen.SEARCH) }
@@ -331,6 +332,23 @@ fun MainAppEntry(viewModel: VoyageViewModel) {
                         }
                     },
                     actions = {
+                        // Manual Sync / Refresh button
+                        IconButton(onClick = { viewModel.refreshData() }, enabled = !isRefreshing) {
+                            if (isRefreshing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Sync,
+                                    contentDescription = "Actualiser / Synchroniser",
+                                    tint = Color.White
+                                )
+                            }
+                        }
+
                         // Theme mode switch (Dark/Light)
                         IconButton(onClick = { viewModel.toggleDarkMode() }) {
                             Icon(

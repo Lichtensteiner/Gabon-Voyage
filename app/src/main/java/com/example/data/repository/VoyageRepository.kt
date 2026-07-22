@@ -14,6 +14,12 @@ class VoyageRepository(private val db: AppDatabase) {
 
     var firebaseSyncManager: FirebaseSyncManager? = null
 
+    private fun generateUniqueId(): Int {
+        val timestamp = System.currentTimeMillis() % 100_000_000L
+        val randomPart = (100..999).random()
+        return kotlin.math.abs((timestamp * 10 + randomPart).toInt())
+    }
+
     // --- Users ---
     val allUsers: Flow<List<User>> = userDao.getAllUsers()
     fun getUserById(id: Int): Flow<User?> = userDao.getUserById(id)
@@ -39,8 +45,7 @@ class VoyageRepository(private val db: AppDatabase) {
     suspend fun loginWithGoogle(email: String, name: String): User? = withContext(Dispatchers.IO) {
         var user = userDao.getUserByEmail(email)
         if (user == null) {
-            // Generer un ID unique pour le nouvel utilisateur basé sur le timestamp ou auto-généré
-            val newId = (System.currentTimeMillis() % 1000000).toInt()
+            val newId = generateUniqueId()
             val newUser = User(
                 id = newId,
                 nom = "Google",
@@ -51,7 +56,7 @@ class VoyageRepository(private val db: AppDatabase) {
                 isAgent = false
             )
             val resultId = userDao.insertUser(newUser)
-            user = newUser.copy(id = resultId.toInt())
+            user = newUser.copy(id = if (resultId > 0) resultId.toInt() else newId)
             firebaseSyncManager?.writeUser(user)
         }
         user
@@ -63,8 +68,7 @@ class VoyageRepository(private val db: AppDatabase) {
         if (existingEmail != null || existingPhone != null) {
             -1L // error code or user exists
         } else {
-            // Générer un ID numérique unique pour l'utilisateur
-            val uniqueId = (System.currentTimeMillis() % 1000000).toInt()
+            val uniqueId = generateUniqueId()
             val finalUser = user.copy(id = uniqueId)
             val insertedRow = userDao.insertUser(finalUser)
             firebaseSyncManager?.writeUser(finalUser)
@@ -96,7 +100,7 @@ class VoyageRepository(private val db: AppDatabase) {
     val allAgencies: Flow<List<Agency>> = agencyDao.getAllAgencies()
     
     suspend fun addAgency(agency: Agency): Long = withContext(Dispatchers.IO) {
-        val uniqueId = (System.currentTimeMillis() % 100000).toInt()
+        val uniqueId = generateUniqueId()
         val finalAgency = agency.copy(id = uniqueId)
         val resultId = agencyDao.insertAgency(finalAgency)
         firebaseSyncManager?.writeAgency(finalAgency)
@@ -111,7 +115,7 @@ class VoyageRepository(private val db: AppDatabase) {
     }
 
     suspend fun addTrip(trip: Trip): Long = withContext(Dispatchers.IO) {
-        val uniqueId = (System.currentTimeMillis() % 100000).toInt()
+        val uniqueId = generateUniqueId()
         val finalTrip = trip.copy(id = uniqueId)
         val resultId = tripDao.insertTrip(finalTrip)
         firebaseSyncManager?.writeTrip(finalTrip)
@@ -140,7 +144,7 @@ class VoyageRepository(private val db: AppDatabase) {
     }
 
     suspend fun createBooking(booking: Booking): Long = withContext(Dispatchers.IO) {
-        val uniqueId = (System.currentTimeMillis() % 1000000).toInt()
+        val uniqueId = generateUniqueId()
         val finalBooking = booking.copy(id = uniqueId)
         val resultId = bookingDao.insertBooking(finalBooking)
         firebaseSyncManager?.writeBooking(finalBooking)

@@ -41,8 +41,10 @@ class FirebaseSyncManager(
                             val user = child.getValue(User::class.java)
                             if (user != null) {
                                 firebaseUsers.add(user)
-                                db.userDao.insertUser(user)
                             }
+                        }
+                        if (firebaseUsers.isNotEmpty()) {
+                            db.userDao.syncUsers(firebaseUsers)
                         }
                     } catch (e: Exception) {
                         Log.e(tag, "Erreur de sync des utilisateurs", e)
@@ -69,7 +71,7 @@ class FirebaseSyncManager(
                             }
                         }
                         if (firebaseAgencies.isNotEmpty()) {
-                            db.agencyDao.insertAgencies(firebaseAgencies)
+                            db.agencyDao.syncAgencies(firebaseAgencies)
                         }
                     } catch (e: Exception) {
                         Log.e(tag, "Erreur de sync des agences", e)
@@ -93,17 +95,10 @@ class FirebaseSyncManager(
                             val trip = child.getValue(Trip::class.java)
                             if (trip != null) {
                                 firebaseTrips.add(trip)
-                                db.tripDao.insertTrip(trip)
                             }
                         }
-
-                        // Pruner les voyages locaux qui ne sont plus dans Firebase
-                        val localTrips = db.tripDao.getAllTripsList()
-                        val firebaseIds = firebaseTrips.map { it.id }.toSet()
-                        for (localTrip in localTrips) {
-                            if (!firebaseIds.contains(localTrip.id)) {
-                                db.tripDao.deleteTripById(localTrip.id)
-                            }
+                        if (firebaseTrips.isNotEmpty()) {
+                            db.tripDao.syncTrips(firebaseTrips)
                         }
                     } catch (e: Exception) {
                         Log.e(tag, "Erreur de sync des voyages", e)
@@ -127,9 +122,9 @@ class FirebaseSyncManager(
                             val booking = child.getValue(Booking::class.java)
                             if (booking != null) {
                                 firebaseBookings.add(booking)
-                                db.bookingDao.insertBooking(booking)
                             }
                         }
+                        db.bookingDao.syncBookings(firebaseBookings)
                     } catch (e: Exception) {
                         Log.e(tag, "Erreur de sync des réservations", e)
                     }

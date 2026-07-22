@@ -40,6 +40,7 @@ fun SearchScreen(
     
     val filteredTrips by viewModel.filteredTrips.collectAsState()
     val allAgencies by viewModel.allAgencies.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
 
     val destinationsList = listOf("Libreville", "Oyem", "Bitam", "Mitzic", "Médouneu")
 
@@ -80,12 +81,26 @@ fun SearchScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Icon(
-                        imageVector = Icons.Default.Map,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(40.dp)
-                    )
+                    
+                    IconButton(
+                        onClick = { viewModel.refreshData() },
+                        enabled = !isRefreshing
+                    ) {
+                        if (isRefreshing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Sync,
+                                contentDescription = "Actualiser les trajets",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
                 }
             }
         }

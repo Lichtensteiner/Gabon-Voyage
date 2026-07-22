@@ -23,6 +23,21 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
     private val _isConnected = MutableStateFlow(true)
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
+    // --- State: Manual Refresh / Sync ---
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    fun refreshData() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            syncManager.startSync()
+            kotlinx.coroutines.delay(1200)
+            _isRefreshing.value = false
+            val timeStr = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+            addNotification("Synchronisation des données en temps réel effectuée à $timeStr")
+        }
+    }
+
     // --- State: Theme Mode ---
     private val _isDarkMode = MutableStateFlow(false)
     val isDarkMode: StateFlow<Boolean> = _isDarkMode.asStateFlow()
