@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "82740821052",
+    "project_id": "gabon-voyage",
+    "storage_bucket": "gabon-voyage.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:82740821052:android:a10a9b337db60d68665739",
+        "android_client_info": {
+          "package_name": "com.gabon.voyage"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCGJTPp7CgztHocUQEvpd1G3UIbKPRn2-8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

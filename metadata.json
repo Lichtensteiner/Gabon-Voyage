@@ -1,0 +1,6 @@
+{
+  "name": "Gabon Voyage",
+  "description": "Application mobile de réservation de voyages terrestres (voiture et bus) vers le Grand Nord du Gabon avec paiement mobile money.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
