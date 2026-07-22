@@ -141,3 +141,24 @@ data class ChatMessage(
     val threadId: String = ""
 ) : Serializable
 
+data class TrashItem(
+    val id: String = "",
+    val type: String = "", // "Colis & Bagages", "Véhicule Flotte", "Chauffeur", "Employé", "Trajet"
+    val title: String = "",
+    val description: String = "",
+    val deletedDate: String = "",
+    val originalObject: Any? = null
+) : Serializable
+
+data class BackupSnapshot(
+    val id: String = "",
+    val timestamp: String = "",
+    val name: String = "",
+    val vehiclesCount: Int = 0,
+    val driversCount: Int = 0,
+    val parcelsCount: Int = 0,
+    val bookingsCount: Int = 0,
+    val tripsCount: Int = 0,
+    val sizeKb: Int = 0
+) : Serializable
+

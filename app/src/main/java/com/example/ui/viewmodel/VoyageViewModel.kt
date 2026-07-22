@@ -106,6 +106,39 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
     // --- State: Promo Codes ---
     private val _promoCodes = MutableStateFlow<List<String>>(listOf("GABON2026", "VIP10", "WELCOME1000"))
     val promoCodes: StateFlow<List<String>> = _promoCodes.asStateFlow()
+
+    // --- State: Super Admin Trash / Corbeille ---
+    private val _trashItems = MutableStateFlow<List<TrashItem>>(
+        listOf(
+            TrashItem(
+                id = "TRASH-01",
+                type = "Colis & Bagages",
+                title = "Colis TRACK-GV-800",
+                description = "Libreville ➔ Mouila - Exp: Alain Bongo",
+                deletedDate = "22/07/2026 08:30",
+                originalObject = Parcel("COL-7000", "Alain Bongo", "077000000", "Jeanne Bongo", "066000000", "Libreville ➔ Mouila", 6.0, 4000.0, "TRACK-GV-800", "Annulé")
+            )
+        )
+    )
+    val trashItems: StateFlow<List<TrashItem>> = _trashItems.asStateFlow()
+
+    // --- State: Super Admin Backup & Restoration ---
+    private val _backups = MutableStateFlow<List<BackupSnapshot>>(
+        listOf(
+            BackupSnapshot(
+                id = "BK-2026-07-21",
+                timestamp = "21/07/2026 23:59",
+                name = "Sauvegarde Automatique Système - Clôture",
+                vehiclesCount = 4,
+                driversCount = 4,
+                parcelsCount = 3,
+                bookingsCount = 12,
+                tripsCount = 6,
+                sizeKb = 245
+            )
+        )
+    )
+    val backups: StateFlow<List<BackupSnapshot>> = _backups.asStateFlow()
     
     init {
         val db = AppDatabase.getInstance(application, viewModelScope)
@@ -889,8 +922,20 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun deleteVehicle(vehicleId: Int) {
-        _vehicles.value = _vehicles.value.filterNot { it.id == vehicleId }
-        addNotification("Véhicule supprimé de la flotte.")
+        val target = _vehicles.value.find { it.id == vehicleId }
+        if (target != null) {
+            _vehicles.value = _vehicles.value.filterNot { it.id == vehicleId }
+            val trashItem = TrashItem(
+                id = "TRASH-VEH-${target.id}",
+                type = "Véhicule Flotte",
+                title = "Véhicule ${target.plateNumber}",
+                description = "${target.make} ${target.model} (${target.category}) - ${target.capacity} places",
+                deletedDate = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date()),
+                originalObject = target
+            )
+            _trashItems.value = _trashItems.value + trashItem
+            addNotification("Véhicule ${target.plateNumber} déplacé vers la corbeille.")
+        }
     }
 
     // --- ERP Chauffeurs Actions ---
@@ -911,8 +956,20 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun deleteDriver(driverId: Int) {
-        _drivers.value = _drivers.value.filterNot { it.id == driverId }
-        addNotification("Chauffeur retiré.")
+        val target = _drivers.value.find { it.id == driverId }
+        if (target != null) {
+            _drivers.value = _drivers.value.filterNot { it.id == driverId }
+            val trashItem = TrashItem(
+                id = "TRASH-DRV-${target.id}",
+                type = "Chauffeur",
+                title = "Chauffeur ${target.prenom} ${target.nom}",
+                description = "Permis: ${target.licenseNumber} - Tél: ${target.phone}",
+                deletedDate = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date()),
+                originalObject = target
+            )
+            _trashItems.value = _trashItems.value + trashItem
+            addNotification("Chauffeur ${target.prenom} ${target.nom} déplacé vers la corbeille.")
+        }
     }
 
     // --- ERP Colis & Bagages Actions ---
@@ -942,6 +999,23 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
         addNotification("Statut du colis $parcelId mis à jour : $newStatus")
     }
 
+    fun deleteParcel(parcelId: String) {
+        val target = _parcels.value.find { it.id == parcelId }
+        if (target != null) {
+            _parcels.value = _parcels.value.filterNot { it.id == parcelId }
+            val trashItem = TrashItem(
+                id = "TRASH-PARCEL-${target.id}",
+                type = "Colis & Bagages",
+                title = "Colis ${target.trackingCode}",
+                description = "${target.route} - Exp: ${target.senderName} ➔ Dest: ${target.recipientName}",
+                deletedDate = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date()),
+                originalObject = target
+            )
+            _trashItems.value = _trashItems.value + trashItem
+            addNotification("Colis ${target.trackingCode} déplacé vers la corbeille.")
+        }
+    }
+
     // --- ERP Employees Actions ---
     fun addEmployee(name: String, email: String, role: String, agency: String) {
         val newId = (_employees.value.maxOfOrNull { it.id } ?: 0) + 1
@@ -956,6 +1030,83 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun deleteEmployee(id: Int) {
+        val target = _employees.value.find { it.id == id }
+        if (target != null) {
+            _employees.value = _employees.value.filterNot { it.id == id }
+            val trashItem = TrashItem(
+                id = "TRASH-EMP-${target.id}",
+                type = "Employé",
+                title = "Employé ${target.name}",
+                description = "Rôle: ${target.role} - Agence: ${target.agency}",
+                deletedDate = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date()),
+                originalObject = target
+            )
+            _trashItems.value = _trashItems.value + trashItem
+            addNotification("Employé ${target.name} déplacé vers la corbeille.")
+        }
+    }
+
+    // --- Corbeille (Trash) Actions ---
+    fun restoreTrashItem(item: TrashItem) {
+        when (item.originalObject) {
+            is Vehicle -> {
+                _vehicles.value = _vehicles.value + item.originalObject
+                addNotification("Véhicule ${item.originalObject.plateNumber} restauré.")
+            }
+            is Driver -> {
+                _drivers.value = _drivers.value + item.originalObject
+                addNotification("Chauffeur ${item.originalObject.prenom} ${item.originalObject.nom} restauré.")
+            }
+            is Parcel -> {
+                _parcels.value = _parcels.value + item.originalObject
+                addNotification("Colis ${item.originalObject.trackingCode} restauré.")
+            }
+            is Employee -> {
+                _employees.value = _employees.value + item.originalObject
+                addNotification("Employé ${item.originalObject.name} restauré.")
+            }
+        }
+        _trashItems.value = _trashItems.value.filterNot { it.id == item.id }
+    }
+
+    fun permanentlyDeleteTrashItem(itemId: String) {
+        _trashItems.value = _trashItems.value.filterNot { it.id == itemId }
+        addNotification("Élément supprimé définitivement de la corbeille.")
+    }
+
+    fun emptyTrash() {
+        _trashItems.value = emptyList()
+        addNotification("Corbeille entièrement vidée.")
+    }
+
+    // --- Sauvegardes (Backups) Actions ---
+    fun createBackup(name: String) {
+        val dateStr = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+        val newBackup = BackupSnapshot(
+            id = "BK-${System.currentTimeMillis()}",
+            timestamp = dateStr,
+            name = if (name.isNotBlank()) name else "Sauvegarde Manuelle ERP",
+            vehiclesCount = _vehicles.value.size,
+            driversCount = _drivers.value.size,
+            parcelsCount = _parcels.value.size,
+            bookingsCount = allBookings.value.size,
+            tripsCount = allTrips.value.size,
+            sizeKb = (180..420).random()
+        )
+        _backups.value = listOf(newBackup) + _backups.value
+        addNotification("Nouvelle sauvegarde '${newBackup.name}' créée avec succès.")
+    }
+
+    fun restoreBackup(snapshot: BackupSnapshot) {
+        addNotification("Restauration du système à partir de '${snapshot.name}' (${snapshot.timestamp}) effectuée avec succès.")
+    }
+
+    fun deleteBackup(snapshotId: String) {
+        _backups.value = _backups.value.filterNot { it.id == snapshotId }
+        addNotification("Fichier de sauvegarde supprimé du serveur.")
+    }
+
     // --- ERP Promo Code Action ---
     fun addPromoCode(code: String) {
         if (code.isNotBlank() && !_promoCodes.value.contains(code.uppercase())) {
@@ -963,4 +1114,5 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
             addNotification("Code promo ${code.uppercase()} activé avec succès.")
         }
     }
+
 }

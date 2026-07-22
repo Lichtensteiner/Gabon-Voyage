@@ -393,36 +393,31 @@ fun MainAppEntry(viewModel: VoyageViewModel) {
             if (currentUser != null) {
                 NavigationBar {
                     if (currentUser!!.isAgent) {
-                        // Agent Specific Bottom Tabs with clear labels for Super Admin ERP
+                        // Agent Specific Bottom Tabs (Icons only as requested)
                         NavigationBarItem(
                             selected = agentScreen == AgentScreen.DASHBOARD,
                             onClick = { agentScreen = AgentScreen.DASHBOARD },
-                            icon = { Icon(Icons.Default.Dashboard, contentDescription = null) },
-                            label = { Text("ERP Admin", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                            icon = { Icon(Icons.Default.Dashboard, contentDescription = "ERP Admin") }
                         )
                         NavigationBarItem(
                             selected = agentScreen == AgentScreen.VALIDATION,
                             onClick = { agentScreen = AgentScreen.VALIDATION },
-                            icon = { Icon(Icons.Default.PendingActions, contentDescription = null) },
-                            label = { Text("Paiements", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                            icon = { Icon(Icons.Default.PendingActions, contentDescription = "Paiements") }
                         )
                         NavigationBarItem(
                             selected = agentScreen == AgentScreen.TRIPS,
                             onClick = { agentScreen = AgentScreen.TRIPS },
-                            icon = { Icon(Icons.Default.AltRoute, contentDescription = null) },
-                            label = { Text("Trajets", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                            icon = { Icon(Icons.Default.AltRoute, contentDescription = "Trajets") }
                         )
                         NavigationBarItem(
                             selected = agentScreen == AgentScreen.MESSAGING,
                             onClick = { agentScreen = AgentScreen.MESSAGING },
-                            icon = { Icon(Icons.Default.Forum, contentDescription = null) },
-                            label = { Text("Messagerie", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                            icon = { Icon(Icons.Default.Forum, contentDescription = "Messagerie") }
                         )
                         NavigationBarItem(
                             selected = agentScreen == AgentScreen.PROFILE,
                             onClick = { agentScreen = AgentScreen.PROFILE },
-                            icon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null) },
-                            label = { Text("Compte", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                            icon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = "Compte") }
                         )
                     } else {
                         // Traveler Specific Bottom Tabs

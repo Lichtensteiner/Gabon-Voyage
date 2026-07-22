@@ -35,7 +35,9 @@ enum class ErpTab(val label: String, val icon: androidx.compose.ui.graphics.vect
     AI_ASSISTANT("IA Gabon Voyage", Icons.Default.AutoAwesome),
     GPS_TRACKING("GPS & Direct", Icons.Default.GpsFixed),
     SEAT_MAP("Sièges & Billets", Icons.Default.AirlineSeatReclineExtra),
-    PROMOS("Promos & Push", Icons.Default.Campaign)
+    PROMOS("Promos & Push", Icons.Default.Campaign),
+    CORBEILLE("Corbeille", Icons.Default.DeleteSweep),
+    BACKUPS("Sauvegardes", Icons.Default.Backup)
 }
 
 @Composable
@@ -52,6 +54,8 @@ fun AdminDashboardScreen(
     val parcels by viewModel.parcels.collectAsState()
     val employees by viewModel.employees.collectAsState()
     val telemetries by viewModel.telemetries.collectAsState()
+    val trashItems by viewModel.trashItems.collectAsState()
+    val backups by viewModel.backups.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val context = LocalContext.current
 
@@ -184,6 +188,8 @@ fun AdminDashboardScreen(
                 ErpTab.GPS_TRACKING -> GpsTrackingModule(telemetries)
                 ErpTab.SEAT_MAP -> SeatMapModule(trips, bookings)
                 ErpTab.PROMOS -> PromosAndPushModule(viewModel)
+                ErpTab.CORBEILLE -> CorbeilleModule(trashItems, viewModel)
+                ErpTab.BACKUPS -> BackupsModule(backups, viewModel)
             }
         }
     }
@@ -575,7 +581,15 @@ fun DriversAndEmployeesModule(
                             onClick = {},
                             label = { Text(driver.status, fontSize = 10.sp) }
                         )
-                        Text("Bus : ${driver.assignedVehiclePlate}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Bus : ${driver.assignedVehiclePlate}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            IconButton(
+                                onClick = { viewModel.deleteDriver(driver.id) },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(Icons.Default.Delete, "Supprimer", tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
                     }
                 }
             }
@@ -609,16 +623,24 @@ fun DriversAndEmployeesModule(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(emp.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Text("${emp.role} • ${emp.agency}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(emp.email, fontSize = 11.sp, color = MaterialTheme.colorScheme.outline)
                     }
 
-                    Switch(
-                        checked = emp.active,
-                        onCheckedChange = { viewModel.toggleEmployeeStatus(emp.id) }
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(
+                            checked = emp.active,
+                            onCheckedChange = { viewModel.toggleEmployeeStatus(emp.id) }
+                        )
+                        IconButton(
+                            onClick = { viewModel.deleteEmployee(emp.id) },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(Icons.Default.Delete, "Supprimer", tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 }
             }
         }
@@ -778,7 +800,19 @@ fun ParcelsModule(
 
                     Text("${parcel.route} • Poids : ${parcel.weightKg} kg • Tarif : ${parcel.priceFcfa.toInt()} FCFA", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Text("Expéditeur : ${parcel.senderName} (${parcel.senderPhone})", fontSize = 11.sp)
-                    Text("Destinataire : ${parcel.recipientName} (${parcel.recipientPhone})", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Destinataire : ${parcel.recipientName} (${parcel.recipientPhone})", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        IconButton(
+                            onClick = { viewModel.deleteParcel(parcel.id) },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(Icons.Default.Delete, "Supprimer", tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 }
             }
         }
@@ -1264,5 +1298,387 @@ fun MetricTile(title: String, value: String, icon: androidx.compose.ui.graphics.
             Text(title, fontSize = 11.sp, color = MaterialTheme.colorScheme.outline)
             Text(value, fontSize = 15.sp, fontWeight = FontWeight.Black)
         }
+    }
+}
+
+// ==========================================
+// 10. CORBEILLE (TRASH BIN) MODULE
+// ==========================================
+@Composable
+fun CorbeilleModule(
+    trashItems: List<TrashItem>,
+    viewModel: VoyageViewModel
+) {
+    var showEmptyConfirmDialog by remember { mutableStateOf(false) }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "🗑️ Corbeille & Historique des Suppressions",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "${trashItems.size} éléments en corbeille (restauration possible)",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                if (trashItems.isNotEmpty()) {
+                    Button(
+                        onClick = { showEmptyConfirmDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Default.DeleteForever, null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Vider Corbeille", fontSize = 11.sp)
+                    }
+                }
+            }
+        }
+
+        if (trashItems.isEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DeleteSweep,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                        Text(
+                            text = "La corbeille est actuellement vide",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                        Text(
+                            text = "Tous les véhicules, chauffeurs, colis ou employés supprimés apparaîtront ici pour une restauration en 1 clic.",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        } else {
+            items(trashItems) { item ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.errorContainer,
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    text = item.type,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                )
+                            }
+
+                            Text(
+                                text = item.deletedDate,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+
+                        Text(
+                            text = item.title,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+
+                        Text(
+                            text = item.description,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Divider()
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(
+                                onClick = { viewModel.restoreTrashItem(item) },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                            ) {
+                                Icon(Icons.Default.RestoreFromTrash, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Restaurer l'élément", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            IconButton(
+                                onClick = { viewModel.permanentlyDeleteTrashItem(item.id) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.DeleteForever,
+                                    contentDescription = "Supprimer définitivement",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showEmptyConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showEmptyConfirmDialog = false },
+            title = { Text("Vider la corbeille ?", fontWeight = FontWeight.Bold) },
+            text = { Text("Attention : Cette action est irréversible et supprimera définitivement tous les éléments en corbeille.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.emptyTrash()
+                        showEmptyConfirmDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Vider définitivement")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEmptyConfirmDialog = false }) { Text("Annuler") }
+            }
+        )
+    }
+}
+
+// ==========================================
+// 11. BACKUPS & RESTORATION MODULE
+// ==========================================
+@Composable
+fun BackupsModule(
+    backups: List<BackupSnapshot>,
+    viewModel: VoyageViewModel
+) {
+    var showCreateBackupDialog by remember { mutableStateOf(false) }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "💾 Dossier de Sauvegarde & Secours ERP",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Snapshots de la base de données et restauration",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Button(
+                    onClick = { showCreateBackupDialog = true },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Backup, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Créer Sauvegarde", fontSize = 11.sp)
+                }
+            }
+        }
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.CloudSync,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Column {
+                        Text(
+                            text = "Sauvegarde Automatique Réseau Libreville",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "Toutes les données (flotte, réservations, chauffeurs, fret colis) sont instantanément archivées en sécurité.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+            }
+        }
+
+        items(backups) { snapshot ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.Storage, null, tint = MaterialTheme.colorScheme.primary)
+                            Text(snapshot.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = "${snapshot.sizeKb} KB",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "Date de création : ${snapshot.timestamp} | ID : ${snapshot.id}",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+
+                    // Stats row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("🚍 Flotte : ${snapshot.vehiclesCount}", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        Text("👨‍✈️ Chauffeurs : ${snapshot.driversCount}", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        Text("📦 Colis : ${snapshot.parcelsCount}", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        Text("🎟️ Billet : ${snapshot.bookingsCount}", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    }
+
+                    Divider()
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(
+                            onClick = { viewModel.restoreBackup(snapshot) },
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Icon(Icons.Default.SettingsBackupRestore, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Restaurer ce fichier", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        IconButton(
+                            onClick = { viewModel.deleteBackup(snapshot.id) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(Icons.Default.Delete, "Supprimer sauvegarde", tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showCreateBackupDialog) {
+        var backupName by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showCreateBackupDialog = false },
+            title = { Text("Créer une Sauvegarde Globale", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Nommez votre snapshot de sauvegarde (optionnel) :", fontSize = 12.sp)
+                    OutlinedTextField(
+                        value = backupName,
+                        onValueChange = { backupName = it },
+                        label = { Text("ex: Clôture Mensuelle Juillet 2026") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.createBackup(backupName)
+                        showCreateBackupDialog = false
+                    }
+                ) {
+                    Text("Sauvegarder Maintenant")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCreateBackupDialog = false }) { Text("Annuler") }
+            }
+        )
     }
 }
