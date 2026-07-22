@@ -9,10 +9,79 @@ data class User(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val nom: String = "",
     val prenom: String = "",
+    val photo: String = "",
     val email: String = "",
     val phone: String = "",
     val password: String = "",
-    val isAgent: Boolean = false
+    val role: String = "Super Administrateur", // "Super Administrateur", "Directeur", "Comptable", "Agent de Réservation", "Contrôleur", "Chauffeur", "Gestionnaire de Flotte", "Responsable RH", "Responsable Fret", "Responsable Maintenance", "Responsable Service Client"
+    val agenceId: Int = 1,
+    val agenceName: String = "Agence Centrale Libreville",
+    val status: String = "Actif", // "Actif", "Suspendu", "Inactif"
+    val lastLogin: String = "22/07/2026 08:00",
+    val createdAt: String = "01/01/2026",
+    val updatedAt: String = "22/07/2026",
+    val isAgent: Boolean = true
+) : Serializable
+
+data class Role(
+    val id: Int = 0,
+    val nom: String = "",
+    val description: String = ""
+) : Serializable
+
+data class Permission(
+    val id: Int = 0,
+    val nom: String = "",
+    val module: String = "",
+    val description: String = ""
+) : Serializable
+
+data class RolePermission(
+    val roleId: Int = 0,
+    val permissionId: Int = 0
+) : Serializable
+
+data class AuditLog(
+    val id: String = "",
+    val userId: Int = 0,
+    val userName: String = "",
+    val userRole: String = "",
+    val action: String = "",
+    val module: String = "",
+    val timestamp: String = "",
+    val ipAddress: String = "192.168.1.10",
+    val status: String = "Succès"
+) : Serializable
+
+data class Expense(
+    val id: String = "",
+    val category: String = "Carburant", // "Carburant", "Entretien", "Maintenance", "Salaires", "Assurances", "Impôts", "Fournitures"
+    val amountFcfa: Double = 0.0,
+    val description: String = "",
+    val date: String = "",
+    val agency: String = "Agence Centrale Libreville",
+    val status: String = "Approuvé"
+) : Serializable
+
+data class Invoice(
+    val id: String = "",
+    val clientName: String = "",
+    val type: String = "Facture Billet", // "Facture Billet", "Facture Fret Colis", "Reçu de Paiement", "Avoir"
+    val amountFcfa: Double = 0.0,
+    val date: String = "",
+    val paymentMethod: String = "Mobile Money",
+    val status: String = "Payée"
+) : Serializable
+
+data class FinancialLedgerEntry(
+    val id: String = "",
+    val ledgerType: String = "Caisse", // "Caisse", "Banque", "Grand Livre", "Balance", "Compte de Résultat", "Bilan"
+    val accountCode: String = "512000",
+    val label: String = "",
+    val debitFcfa: Double = 0.0,
+    val creditFcfa: Double = 0.0,
+    val date: String = "",
+    val reference: String = ""
 ) : Serializable
 
 @Entity(tableName = "agencies")

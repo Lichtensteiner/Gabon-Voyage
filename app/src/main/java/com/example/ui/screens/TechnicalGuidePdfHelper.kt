@@ -180,25 +180,30 @@ object TechnicalGuidePdfHelper {
                 yPos += 18f
             }
             
-            yPos += 15f
+            yPos += 12f
             paint.color = android.graphics.Color.BLACK
             paint.textSize = 12f
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            canvas.drawText("6. EXPÉRIENCE COMPTE SUPER ADMINISTRATEUR (MARTIN COOP)", 40f, yPos, paint)
+            canvas.drawText("6. AXES D'AMÉLIORATION", 40f, yPos, paint)
             yPos += 15f
             
             paint.color = android.graphics.Color.DKGRAY
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-            paint.textSize = 10f
-            val adminLines = listOf(
-                "Le compte Administrateur Principal (Martinien Mvezogo, email: martinienmvezogo@gmail.com)",
-                "possède les pleins pouvoirs de gestion : modification des tarifs de trajets, ajout de nouvelles gares,",
-                "approbation unilatérale des transactions Mobile Money en un clic, et exécution de l'algorithme",
-                "d'audit financier automatique piloté par IA."
+            paint.textSize = 9.5f
+            val axesLines = listOf(
+                "1. Accompagnement des utilisateurs : La richesse fonctionnelle de Gabon Voyage nécessite",
+                "   une courte formation initiale et la mise à disposition d'un guide utilisateur interactif afin",
+                "   de faciliter la prise en main des différents modules selon les rôles.",
+                "2. Optimisation de la connectivité : Les fonctionnalités en temps réel (géolocalisation,",
+                "   synchronisation des réservations et notifications) dépendent d'une connexion Internet stable.",
+                "   Un mécanisme de synchronisation automatique synchronise les données dès le rétablissement.",
+                "3. Automatisation des paiements : Prévoir l'intégration des API et Webhooks des opérateurs",
+                "   Mobile Money et des passerelles de paiement afin d'automatiser la validation des transactions,",
+                "   la génération des reçus et le rapprochement comptable en temps réel, sans intervention manuelle."
             )
-            for (line in adminLines) {
+            for (line in axesLines) {
                 canvas.drawText(line, 40f, yPos, paint)
-                yPos += 16f
+                yPos += 15f
             }
             
             // Footer page 2

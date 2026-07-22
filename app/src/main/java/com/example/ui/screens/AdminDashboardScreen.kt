@@ -27,15 +27,19 @@ import com.example.data.model.*
 import com.example.ui.viewmodel.VoyageViewModel
 
 enum class ErpTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    DASHBOARD("Tableau de bord", Icons.Default.Dashboard),
+    RBAC_USERS("Users & Rôles", Icons.Default.AdminPanelSettings),
+    DIRECTEUR("Supervision Directeur", Icons.Default.Analytics),
+    COMPTABLE("Comptabilité Finances", Icons.Default.AccountBalance),
+    CONTROLEUR("Embarquement QR", Icons.Default.QrCodeScanner),
+    CHAUFFEUR("Espace Chauffeur", Icons.Default.DriveEta),
+    DASHBOARD("Tableau de bord KPIs", Icons.Default.Dashboard),
     FLEET("Flotte Véhicules", Icons.Default.DirectionsBus),
     DRIVERS("Chauffeurs & RH", Icons.Default.Badge),
     PARCELS("Colis & Bagages", Icons.Default.LocalShipping),
-    FINANCE("Comptabilité", Icons.Default.AccountBalance),
     AI_ASSISTANT("IA Gabon Voyage", Icons.Default.AutoAwesome),
     GPS_TRACKING("GPS & Direct", Icons.Default.GpsFixed),
     SEAT_MAP("Sièges & Billets", Icons.Default.AirlineSeatReclineExtra),
-    PROMOS("Promos & Push", Icons.Default.Campaign),
+    SECURITY("Sécurité & Audit Log", Icons.Default.Security),
     CORBEILLE("Corbeille", Icons.Default.DeleteSweep),
     BACKUPS("Sauvegardes", Icons.Default.Backup)
 }
@@ -45,7 +49,27 @@ fun AdminDashboardScreen(
     viewModel: VoyageViewModel,
     modifier: Modifier = Modifier
 ) {
-    var selectedTab by remember { mutableStateOf(ErpTab.DASHBOARD) }
+    val currentUser by viewModel.currentUser.collectAsState()
+    var selectedTab by remember { mutableStateOf(ErpTab.RBAC_USERS) }
+
+    // Auto-select tab depending on logged-in user role
+    LaunchedEffect(currentUser) {
+        currentUser?.let { user ->
+            when (user.role) {
+                "Directeur" -> selectedTab = ErpTab.DIRECTEUR
+                "Comptable" -> selectedTab = ErpTab.COMPTABLE
+                "Contrôleur" -> selectedTab = ErpTab.CONTROLEUR
+                "Chauffeur" -> selectedTab = ErpTab.CHAUFFEUR
+                "Super Administrateur" -> selectedTab = ErpTab.RBAC_USERS
+                "Gestionnaire de Flotte" -> selectedTab = ErpTab.FLEET
+                "Responsable RH" -> selectedTab = ErpTab.DRIVERS
+                "Responsable Fret" -> selectedTab = ErpTab.PARCELS
+                "Responsable Maintenance" -> selectedTab = ErpTab.FLEET
+                "Agent de Réservation" -> selectedTab = ErpTab.SEAT_MAP
+                else -> selectedTab = ErpTab.DASHBOARD
+            }
+        }
+    }
 
     val bookings by viewModel.allBookings.collectAsState()
     val trips by viewModel.allTrips.collectAsState()
@@ -95,13 +119,13 @@ fun AdminDashboardScreen(
                         }
                         Column {
                             Text(
-                                text = "SUPER ADMIN ERP",
+                                text = "GABON VOYAGE ERP (RBAC)",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Black,
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = "Gabon Voyage Transport Management System",
+                                text = "Système de Rôles & Permissions Multi-Utilisateurs",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -179,15 +203,19 @@ fun AdminDashboardScreen(
         // --- Main Content Switcher Based on ERP Tab ---
         Box(modifier = Modifier.weight(1f)) {
             when (selectedTab) {
+                ErpTab.RBAC_USERS -> RbacUsersAndRolesModule(viewModel)
+                ErpTab.DIRECTEUR -> DirectorDashboardModule(viewModel, context)
+                ErpTab.COMPTABLE -> ComptableDashboardModule(viewModel, context)
+                ErpTab.CONTROLEUR -> ControleurModule(viewModel)
+                ErpTab.CHAUFFEUR -> ChauffeurModule(viewModel)
                 ErpTab.DASHBOARD -> DashboardModule(bookings, trips, vehicles, viewModel)
                 ErpTab.FLEET -> FleetModule(vehicles, drivers, viewModel)
                 ErpTab.DRIVERS -> DriversAndEmployeesModule(drivers, employees, viewModel)
                 ErpTab.PARCELS -> ParcelsModule(parcels, viewModel)
-                ErpTab.FINANCE -> FinanceModule(bookings, context, viewModel)
                 ErpTab.AI_ASSISTANT -> AiAssistantErpModule(viewModel)
                 ErpTab.GPS_TRACKING -> GpsTrackingModule(telemetries)
                 ErpTab.SEAT_MAP -> SeatMapModule(trips, bookings)
-                ErpTab.PROMOS -> PromosAndPushModule(viewModel)
+                ErpTab.SECURITY -> SecurityAuditModule(viewModel)
                 ErpTab.CORBEILLE -> CorbeilleModule(trashItems, viewModel)
                 ErpTab.BACKUPS -> BackupsModule(backups, viewModel)
             }

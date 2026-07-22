@@ -359,11 +359,47 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _authError.value = null
-            val user = repository.login(email.trim(), password)
-            if (user != null) {
-                _currentUser.value = user
+            val cleanInput = email.trim()
+            val cleanPass = password.trim()
+
+            if (cleanInput.isBlank() || cleanPass.isBlank()) {
+                _authError.value = "Veuillez saisir votre identifiant/email et votre mot de passe."
+                return@launch
+            }
+
+            // 1. First check in-memory RBAC users list (populated with all roles)
+            val rbacUser = _usersList.value.find {
+                it.email.equals(cleanInput, ignoreCase = true) || it.phone == cleanInput
+            }
+
+            if (rbacUser != null) {
+                if (rbacUser.password == cleanPass) {
+                    if (rbacUser.status == "Suspendu" || rbacUser.status == "Inactif") {
+                        _authError.value = "Ce compte (${rbacUser.role}) est actuellement suspendu."
+                        return@launch
+                    }
+                    val updatedUser = rbacUser.copy(lastLogin = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date()))
+                    _currentUser.value = updatedUser
+                    _authSuccess.value = true
+                    repository.updateUser(updatedUser)
+                    addNotification("Connexion réussie (${updatedUser.role}). Bienvenue, ${updatedUser.prenom} ${updatedUser.nom} !")
+                    return@launch
+                } else {
+                    _authError.value = "Mot de passe incorrect pour $cleanInput."
+                    return@launch
+                }
+            }
+
+            // 2. Fallback to Room Database query
+            val dbUser = repository.login(cleanInput, cleanPass)
+            if (dbUser != null) {
+                if (dbUser.status == "Suspendu" || dbUser.status == "Inactif") {
+                    _authError.value = "Ce compte est actuellement suspendu."
+                    return@launch
+                }
+                _currentUser.value = dbUser
                 _authSuccess.value = true
-                addNotification("Connexion réussie. Bienvenue, ${user.prenom} ${user.nom} !")
+                addNotification("Connexion réussie. Bienvenue, ${dbUser.prenom} ${dbUser.nom} !")
             } else {
                 _authError.value = "Identifiants incorrects ou utilisateur inexistant."
             }
@@ -373,15 +409,45 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
     fun loginWithPhone(phone: String, password: String) {
         viewModelScope.launch {
             _authError.value = null
-            if (phone.isBlank() || password.isBlank()) {
+            val cleanPhone = phone.trim()
+            val cleanPass = password.trim()
+
+            if (cleanPhone.isBlank() || cleanPass.isBlank()) {
                 _authError.value = "Veuillez remplir les informations de téléphone et de passe."
                 return@launch
             }
-            val user = repository.loginWithPhone(phone.trim(), password)
-            if (user != null) {
-                _currentUser.value = user
+
+            val rbacUser = _usersList.value.find {
+                it.phone == cleanPhone || it.email.equals(cleanPhone, ignoreCase = true)
+            }
+
+            if (rbacUser != null) {
+                if (rbacUser.password == cleanPass) {
+                    if (rbacUser.status == "Suspendu" || rbacUser.status == "Inactif") {
+                        _authError.value = "Ce compte (${rbacUser.role}) est actuellement suspendu."
+                        return@launch
+                    }
+                    val updatedUser = rbacUser.copy(lastLogin = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date()))
+                    _currentUser.value = updatedUser
+                    _authSuccess.value = true
+                    repository.updateUser(updatedUser)
+                    addNotification("Connexion réussie par Téléphone (${updatedUser.role}). Bienvenue, ${updatedUser.prenom} !")
+                    return@launch
+                } else {
+                    _authError.value = "Mot de passe incorrect."
+                    return@launch
+                }
+            }
+
+            val dbUser = repository.loginWithPhone(cleanPhone, cleanPass)
+            if (dbUser != null) {
+                if (dbUser.status == "Suspendu" || dbUser.status == "Inactif") {
+                    _authError.value = "Ce compte est actuellement suspendu."
+                    return@launch
+                }
+                _currentUser.value = dbUser
                 _authSuccess.value = true
-                addNotification("Connexion réussie par Téléphone. Bienvenue, ${user.prenom} !")
+                addNotification("Connexion réussie par Téléphone. Bienvenue, ${dbUser.prenom} !")
             } else {
                 _authError.value = "Compte de téléphone introuvable ou mot de passe incorrect."
             }
@@ -1045,6 +1111,235 @@ class VoyageViewModel(application: Application) : AndroidViewModel(application) 
             _trashItems.value = _trashItems.value + trashItem
             addNotification("Employé ${target.name} déplacé vers la corbeille.")
         }
+    }
+
+    // --- State: RBAC Roles & Permissions ---
+    private val _roles = MutableStateFlow<List<Role>>(
+        listOf(
+            Role(1, "Super Administrateur", "Accès total et universel à l'ensemble du système, gestion des utilisateurs, rôles, agences et sécurité."),
+            Role(2, "Directeur", "Supervision globale des opérations, tableaux de bord KPI, flotte, horaires et rapports de performance."),
+            Role(3, "Comptable", "Gestion financière exclusive, trésorerie, caisse, banque, dépenses, factures et grands livres comptables."),
+            Role(4, "Agent de Réservation", "Gestion des guichets, création de réservations, encaissement, choix des sièges et impression de billets."),
+            Role(5, "Contrôleur", "Validation d'embarquement à bord des bus, vérification des billets par QR code, liste de présence passagers."),
+            Role(6, "Chauffeur", "Espace mobile pour missions de conduite du jour, itinéraires, suivi du bus et signalement d'incidents."),
+            Role(7, "Gestionnaire de Flotte", "Gestion de la flotte de véhicules, révisions techniques, assurances, affectation aux trajets."),
+            Role(8, "Responsable RH", "Gestion des contrats, plannings des chauffeurs et employés, congés et présence."),
+            Role(9, "Responsable Fret", "Expédition des colis et bagages, enregistrement du poids, suivi de livraison et tarification fret."),
+            Role(10, "Responsable Maintenance", "Planification des entretiens mécaniques, ordres de réparation et pièces de rechange."),
+            Role(11, "Responsable Service Client", "Suivi des réclamations passagers, chat d'assistance en direct et satisfaction voyageur.")
+        )
+    )
+    val roles: StateFlow<List<Role>> = _roles.asStateFlow()
+
+    private val _permissions = MutableStateFlow<List<Permission>>(
+        listOf(
+            Permission(1, "Gestion Utilisateurs & Rôles", "Sécurité & RBAC", "Créer, modifier, suspendre et attribuer des rôles aux utilisateurs."),
+            Permission(2, "Supervision & KPIs Opérations", "Direction", "Consulter le chiffre d'affaires global, taux de remplissage et performances."),
+            Permission(3, "Gestion Comptable & Trésorerie", "Finances", "Consulter la caisse, la banque, saisir les dépenses et établir les bilans."),
+            Permission(4, "Émission & Vente de Billets", "Guichet", "Réserver des places, encaisser le paiement et imprimer les billets."),
+            Permission(5, "Contrôle & Scanner QR Code", "Embarquement", "Scanner les passagers, valider le billet et signaler les absents."),
+            Permission(6, "Missions & Itinéraires Chauffeur", "Transport", "Accéder aux feuilles de route, confirmer départs et arrivées."),
+            Permission(7, "Gestion de la Flotte Véhicules", "Logistique", "Suivre l'état des bus, le kilométrage, les contrôles techniques."),
+            Permission(8, "Gestion du Fret Colis", "Colis", "Enregistrer les expéditions de bagages et délivrer les colis aux agences."),
+            Permission(9, "Audit Logs & Sauvegardes", "Sécurité", "Consulter les journaux d'accès et exécuter des sauvegardes système.")
+        )
+    )
+    val permissions: StateFlow<List<Permission>> = _permissions.asStateFlow()
+
+    private val _usersList = MutableStateFlow<List<User>>(
+        listOf(
+            User(1, "Mve Zogo", "Martinien", "https://i.pravatar.cc/150?img=11", "martinienmvezogo@gmail.com", "077000000", "24.05.1995Ludo", "Super Administrateur", 1, "Direction Générale", "Actif", "22/07/2026 08:30", "01/01/2026", "22/07/2026", true),
+            User(2, "Mba", "Thierry", "https://i.pravatar.cc/150?img=12", "directeur@gabonvoyage.ga", "077112233", "Directeur123", "Directeur", 1, "Agence Centrale Libreville", "Actif", "22/07/2026 07:15", "10/02/2026", "22/07/2026", true),
+            User(3, "Nguema", "Clarisse", "https://i.pravatar.cc/150?img=5", "comptable@gabonvoyage.ga", "066445566", "Compta2026", "Comptable", 1, "Direction Financière", "Actif", "21/07/2026 18:00", "15/02/2026", "21/07/2026", true),
+            User(4, "Zue", "Felix", "https://i.pravatar.cc/150?img=8", "agent@gabonvoyage.ga", "074889900", "AgentPass1", "Agent de Réservation", 2, "Agence Oyem", "Actif", "22/07/2026 08:00", "01/03/2026", "22/07/2026", true),
+            User(5, "Obame", "Paul", "https://i.pravatar.cc/150?img=15", "controleur@gabonvoyage.ga", "062334455", "Control2026", "Contrôleur", 1, "Gare Routière PK8", "Actif", "22/07/2026 06:45", "12/03/2026", "22/07/2026", true),
+            User(6, "Mba", "Jean-Paul", "https://i.pravatar.cc/150?img=3", "chauffeur@gabonvoyage.ga", "077123456", "DriverPass1", "Chauffeur", 1, "Agence Centrale Libreville", "Actif", "22/07/2026 06:00", "05/01/2026", "22/07/2026", true),
+            User(7, "Ekomie", "Patrick", "https://i.pravatar.cc/150?img=60", "flotte@gabonvoyage.ga", "077990011", "Flotte2026", "Gestionnaire de Flotte", 1, "Garage Central", "Actif", "20/07/2026 14:20", "20/02/2026", "20/07/2026", true),
+            User(8, "Biyoghe", "Chantal", "https://i.pravatar.cc/150?img=47", "rh@gabonvoyage.ga", "066332211", "RhPass2026", "Responsable RH", 1, "Direction Générale", "Actif", "19/07/2026 09:10", "10/01/2026", "19/07/2026", true)
+        )
+    )
+    val usersList: StateFlow<List<User>> = _usersList.asStateFlow()
+
+    private val _auditLogs = MutableStateFlow<List<AuditLog>>(
+        listOf(
+            AuditLog("AUD-901", 1, "Martinien Mve Zogo", "Super Administrateur", "Connexion Réussie 2FA", "Sécurité", "22/07/2026 08:30", "197.234.221.10", "Succès"),
+            AuditLog("AUD-902", 3, "Clarisse Nguema", "Comptable", "Validation Clôture Caisse", "Finances", "21/07/2026 18:05", "197.234.221.14", "Succès"),
+            AuditLog("AUD-903", 2, "Thierry Mba", "Directeur", "Modification horaire trajet Lbv-Oyem", "Voyages", "21/07/2026 14:12", "197.234.221.12", "Succès"),
+            AuditLog("AUD-904", 4, "Felix Zue", "Agent de Réservation", "Génération Billet #REF-GV-88", "Billetterie", "21/07/2026 11:40", "197.234.222.05", "Succès")
+        )
+    )
+    val auditLogs: StateFlow<List<AuditLog>> = _auditLogs.asStateFlow()
+
+    private val _expenses = MutableStateFlow<List<Expense>>(
+        listOf(
+            Expense("EXP-101", "Carburant", 185000.0, "Plein Gasoil Bus VIP GA-882-GV - Total PK12", "22/07/2026", "Agence Centrale Libreville", "Approuvé"),
+            Expense("EXP-102", "Maintenance", 120000.0, "Vidange & Changement Filtres Huile GA-304-GV", "21/07/2026", "Agence Oyem", "Approuvé"),
+            Expense("EXP-103", "Assurances", 450000.0, "Renouvellement Assurance Flotte OGAR 3 Mois", "15/07/2026", "Direction Générale", "Approuvé"),
+            Expense("EXP-104", "Fournitures", 35000.0, "Achat Rouleaux Papier Thermique Imprimantes Billets", "18/07/2026", "Agence Bitam", "Approuvé")
+        )
+    )
+    val expenses: StateFlow<List<Expense>> = _expenses.asStateFlow()
+
+    private val _invoices = MutableStateFlow<List<Invoice>>(
+        listOf(
+            Invoice("FAC-2026-001", "Alain Bongo", "Facture Billet VIP", 15000.0, "22/07/2026", "Airtel Money", "Payée"),
+            Invoice("FAC-2026-002", "Société WoodGabon", "Facture Fret Colis Spécial", 85000.0, "21/07/2026", "Virement Bancaire", "Payée"),
+            Invoice("FAC-2026-003", "Jeanne Ntsame", "Reçu de Paiement Billet Standard", 10000.0, "21/07/2026", "Espèces Caisse", "Payée"),
+            Invoice("FAC-2026-004", "Marc Ondo", "Avoir Annulation Billet #GV-102", 12000.0, "20/07/2026", "Avoir Client", "Remboursé")
+        )
+    )
+    val invoices: StateFlow<List<Invoice>> = _invoices.asStateFlow()
+
+    private val _ledgerEntries = MutableStateFlow<List<FinancialLedgerEntry>>(
+        listOf(
+            FinancialLedgerEntry("LEDG-01", "Caisse", "531000", "Recettes Guichet Billetterie du Jour", 450000.0, 0.0, "22/07/2026", "REC-G-8801"),
+            FinancialLedgerEntry("LEDG-02", "Banque", "512000", "Virement BGFIBank Règlement Fret Entreprise", 180000.0, 0.0, "22/07/2026", "VIR-BGF-99"),
+            FinancialLedgerEntry("LEDG-03", "Caisse", "531000", "Achat Carburant Dépôt Libreville", 0.0, 185000.0, "22/07/2026", "EXP-101"),
+            FinancialLedgerEntry("LEDG-04", "Grand Livre", "606100", "Charges Fournitures et Maintenance Flotte", 0.0, 120000.0, "21/07/2026", "EXP-102")
+        )
+    )
+    val ledgerEntries: StateFlow<List<FinancialLedgerEntry>> = _ledgerEntries.asStateFlow()
+
+    // --- RBAC User Actions ---
+    fun createUser(user: User) {
+        val newId = (_usersList.value.maxOfOrNull { it.id } ?: 0) + 1
+        val dateNow = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+        val created = user.copy(
+            id = newId,
+            createdAt = dateNow,
+            updatedAt = dateNow,
+            isAgent = user.role != "Voyageur"
+        )
+        _usersList.value = _usersList.value + created
+        
+        viewModelScope.launch {
+            try {
+                repository.updateUser(created)
+            } catch (e: Exception) {
+                android.util.Log.e("VoyageViewModel", "Failed to save user to DB", e)
+            }
+        }
+
+        addAuditLog("Création Utilisateur #${created.id} - ${created.prenom} ${created.nom} (${created.role})", "Sécurité & RBAC")
+        addNotification("Utilisateur ${created.prenom} ${created.nom} créé avec succès (Rôle : ${created.role}). Il/Elle peut se connecter dès maintenant avec ${created.email} / ${created.phone}.")
+    }
+
+    fun updateUser(user: User) {
+        _usersList.value = _usersList.value.map { if (it.id == user.id) user else it }
+        viewModelScope.launch {
+            try {
+                repository.updateUser(user)
+            } catch (e: Exception) {
+                android.util.Log.e("VoyageViewModel", "Failed to update user in DB", e)
+            }
+        }
+        addAuditLog("Modification Utilisateur #${user.id} - ${user.prenom} ${user.nom}", "Sécurité & RBAC")
+        addNotification("Profil de ${user.prenom} ${user.nom} mis à jour.")
+    }
+
+    fun deleteUser(userId: Int) {
+        val target = _usersList.value.find { it.id == userId }
+        if (target != null) {
+            _usersList.value = _usersList.value.filterNot { it.id == userId }
+            viewModelScope.launch {
+                try {
+                    repository.deleteUser(userId)
+                } catch (e: Exception) {
+                    android.util.Log.e("VoyageViewModel", "Failed to delete user from DB", e)
+                }
+            }
+            addAuditLog("Suppression Utilisateur #${target.id} - ${target.prenom} ${target.nom}", "Sécurité & RBAC")
+            addNotification("Utilisateur ${target.prenom} ${target.nom} supprimé.")
+        }
+    }
+
+    fun toggleUserStatus(userId: Int) {
+        _usersList.value = _usersList.value.map {
+            if (it.id == userId) {
+                val newStatus = if (it.status == "Actif") "Suspendu" else "Actif"
+                val updated = it.copy(status = newStatus)
+                viewModelScope.launch {
+                    try {
+                        repository.updateUser(updated)
+                    } catch (e: Exception) {
+                        android.util.Log.e("VoyageViewModel", "Failed to toggle user status in DB", e)
+                    }
+                }
+                addAuditLog("Changement Statut Utilisateur #${it.id} -> $newStatus", "Sécurité & RBAC")
+                addNotification("Compte de ${it.prenom} ${it.nom} passé à : $newStatus.")
+                updated
+            } else it
+        }
+    }
+
+    fun resetUserPassword(userId: Int) {
+        val defaultPass = "Gabon2026!"
+        _usersList.value = _usersList.value.map {
+            if (it.id == userId) {
+                val updated = it.copy(password = defaultPass)
+                viewModelScope.launch {
+                    try {
+                        repository.updateUser(updated)
+                    } catch (e: Exception) {
+                        android.util.Log.e("VoyageViewModel", "Failed to reset password in DB", e)
+                    }
+                }
+                addAuditLog("Réinitialisation Mot de Passe #${it.id} - ${it.prenom} ${it.nom}", "Sécurité & RBAC")
+                addNotification("Mot de passe réinitialisé pour ${it.prenom} ${it.nom} (Nouveau : $defaultPass).")
+                updated
+            } else it
+        }
+    }
+
+    // --- RBAC Role Actions ---
+    fun createRole(name: String, description: String) {
+        val newId = (_roles.value.maxOfOrNull { it.id } ?: 0) + 1
+        val newRole = Role(newId, name, description)
+        _roles.value = _roles.value + newRole
+        addAuditLog("Création du Rôle '$name'", "Sécurité & RBAC")
+        addNotification("Nouveau rôle '$name' ajouté avec succès.")
+    }
+
+    fun duplicateRole(role: Role) {
+        val newId = (_roles.value.maxOfOrNull { it.id } ?: 0) + 1
+        val dupRole = Role(newId, "${role.nom} (Copie)", role.description)
+        _roles.value = _roles.value + dupRole
+        addAuditLog("Duplication du Rôle '${role.nom}'", "Sécurité & RBAC")
+        addNotification("Rôle '${role.nom}' dupliqué.")
+    }
+
+    fun deleteRole(roleId: Int) {
+        val target = _roles.value.find { it.id == roleId }
+        if (target != null && target.nom != "Super Administrateur") {
+            _roles.value = _roles.value.filterNot { it.id == roleId }
+            addAuditLog("Suppression du Rôle '${target.nom}'", "Sécurité & RBAC")
+            addNotification("Rôle '${target.nom}' supprimé.")
+        }
+    }
+
+    // --- Finance Actions ---
+    fun addExpense(category: String, amount: Double, description: String, agency: String) {
+        val dateStr = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+        val newExp = Expense("EXP-${System.currentTimeMillis() % 10000}", category, amount, description, dateStr, agency, "Approuvé")
+        _expenses.value = listOf(newExp) + _expenses.value
+        addAuditLog("Enregistrement Dépense ${amount.toInt()} FCFA ($category)", "Finances")
+        addNotification("Dépense de ${amount.toInt()} FCFA enregistrée avec succès.")
+    }
+
+    fun addAuditLog(action: String, module: String) {
+        val user = _currentUser.value
+        val log = AuditLog(
+            id = "AUD-${System.currentTimeMillis() % 10000}",
+            userId = user?.id ?: 1,
+            userName = if (user != null) "${user.prenom} ${user.nom}" else "Martinien Mve Zogo",
+            userRole = user?.role ?: "Super Administrateur",
+            action = action,
+            module = module,
+            timestamp = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date()),
+            ipAddress = "197.234.221.${(10..99).random()}",
+            status = "Succès"
+        )
+        _auditLogs.value = listOf(log) + _auditLogs.value
     }
 
     // --- Corbeille (Trash) Actions ---
