@@ -21,8 +21,8 @@ object GeminiAnalyticsService {
 
     suspend fun generateAnalysis(prompt: String): String = withContext(Dispatchers.IO) {
         val apiKey = BuildConfig.GEMINI_API_KEY
-        if (apiKey.isEmpty() || apiKey == "YOUR_API_KEY_HERE") {
-            return@withContext "Erreur: Clé API Gemini manquante. Veuillez configurer la clé dans le panneau Secrets de l'application."
+        if (apiKey.isEmpty() || apiKey == "YOUR_API_KEY_HERE" || apiKey == "MY_GEMINI_API_KEY" || apiKey == "MY_NEW_API_KEY_DEFAULT_VALUE") {
+            return@withContext "⚠️ Clé API Gemini non configurée.\n\nVeuillez ajouter votre clé API Gemini dans le panneau Secrets (Secrets Panel) de Google AI Studio avec la clé GEMINI_API_KEY."
         }
 
         try {
